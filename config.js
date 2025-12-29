@@ -5,7 +5,7 @@
 const CONFIG = {
     // --- SYSTEM SETTINGS ---
     // You will add your Google Script URL here later
-    GOOGLE_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbzgSYtEYS6yy_gbU_odIJDWcaECGpT8w4S3HFZN-YnaMyzCLFQ9bDoOS0ovde9PzLkG/exec",
+    GOOGLE_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbwX6z2zLf-nCzGCrX-ikwMWVZPESM_oOMFxRKgeHuVAdLme3BvBObQnTKJRN3KYdKER/exec",
     
     // --- UI TEXT TRANSLATIONS ---
     ui: {
