@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Клінічний звіт CBCL</title>
+    <script src="config.js"></script>
+    <style>
+        /* --- GLOBAL STYLES --- */
+        body { font-family: 'Segoe UI', sans-serif; background: #f1f5f9; padding: 40px; color: #0f172a; margin: 0; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 50px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        
+        /* HEADERS */
+        h1 { text-align: center; color: #1e293b; margin-bottom: 5px; font-size: 28px; }
+        .subtitle { text-align: center; color: #64748b; font-size: 16px; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
+        h2 { color: #2563eb; font-size: 18px; border-bottom: 2px solid #eff6ff; padding-bottom: 8px; margin-top: 40px; margin-bottom: 20px; }
+        h3 { font-size: 15px; font-weight: 700; color: #475569; margin-bottom: 10px; margin-top: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* SYNDROME CHART */
+        .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
+        .chart-row { display: flex; align-items: center; margin-bottom: 15px; }
+        .label-group { width: 170px; text-align: right; padding-right: 15px; display: flex; flex-direction: column; justify-content: center; }
+        .label-text { font-weight: 600; font-size: 13px; color: #334155; }
+        .label-status { font-size: 11px; font-weight: 700; margin-top: 2px; }
+        
+        .bar-container { flex: 1; height: 24px; background: #f1f5f9; border-radius: 4px; position: relative; overflow: hidden; }
+        .bar { height: 100%; transition: width 1s ease-out; border-radius: 4px; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        /* Cutoff Markers */
+        .marker { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(0,0,0,0.15); z-index: 2; border-right: 1px dashed white; }
+        .marker-label { position: absolute; top: -12px; font-size: 9px; color: #94a3b8; transform: translateX(-50%); }
+
+        .score-val { margin-left: 10px; font-weight: 700; font-size: 14px; width: 25px; text-align: right; }
+
+        /* DATA TABLES */
+        .data-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 15px; }
+        .data-table th, .data-table td { padding: 8px 12px; border: 1px solid #e2e8f0; text-align: left; }
+        .data-table th { background: #f8fafc; font-weight: 600; color: #475569; width: 40%; }
+        .tag { display: inline-block; background: #eff6ff; color: #2563eb; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-right: 5px; }
+
+        /* BUTTONS */
+        .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 50px; }
+        .btn { padding: 12px 25px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px; cursor: pointer; border: none; transition: 0.2s; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-outline { background: white; border: 1px solid #cbd5e1; color: #475569; }
+        .btn-outline:hover { background: #f8fafc; }
+
+        /* Separate block styling for Broad Scales */
+        #broad-container {
+            border-bottom: 2px dashed #e2e8f0;
+            padding-bottom: 20px;
+        }
+        .broad-scale-row .label-text {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        @media print {
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; padding: 0; }
+            .btn-group { display: none; }
+            .chart-grid { display: block; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Звіт CBCL (6-18)</h1>
+    <div class="subtitle" id="child-header">Завантаження даних...</div>
+
+    <h2>Загальні шкали (Broad Scales)</h2>
+    <div class="chart-grid" id="broad-container" style="margin-bottom: 50px;"></div>
+
+    <h2>Синдромні шкали (Проблемні питання)</h2>
+    <div class="chart-grid" id="syndrome-container"></div>
+
+    <h2>Профіль компетентності</h2>
+    <div id="competence-container">
+        <h3>I-IV. Активність</h3>
+        <table class="data-table" id="tbl-activities"><thead><tr><th>Категорія</th><th>Елементи та оцінки</th></tr></thead><tbody></tbody></table>
+
+        <h3>V-VI. Соціальна сфера</h3>
+        <table class="data-table">
+            <tr><th>Друзі</th><td><span id="soc-friends">-</span> (Кількість) | <span id="soc-freq">-</span> (Частота)</td></tr>
+            <tr><th>Стосунки</th><td id="soc-relations"></td></tr>
+        </table>
+
+        <h3>VII. Успішність у школі</h3>
+        <table class="data-table" id="tbl-school"><thead><tr><th>Предмет</th><th>Успішність</th></tr></thead><tbody></tbody></table>
+        <div id="school-notes" style="font-size:13px; color:#ef4444; margin-top:5px; font-style:italic;"></div>
+    </div>
+
+    <div class="btn-group">
+        <button onclick="window.print()" class="btn btn-outline">🖨️ Друкувати звіт</button>
+        <a href="index.html" class="btn btn-primary">Почати нове опитування</a>
+    </div>
+</div>
+
+<script>
+    const LABELS = {
+        grades: ["Незадовільно", "Нижче середнього", "Середньо", "Вище середнього"],
+        relations: ["Гірше", "Середньо", "Краще"],
+        subjects: ["Читання", "Мова", "Математика", "Інше"]
+    };
+
+    const SCALE_NAMES = {
+        "Anxious/Depressed": "Тривожність / Депресія",
+        "Withdrawn/Depressed": "Замкнутість / Депресія",
+        "Somatic Complaints": "Соматичні скарги",
+        "Social Problems": "Соціальні проблеми",
+        "Thought Problems": "Проблеми мислення",
+        "Attention Problems": "Проблеми уваги",
+        "Rule-Breaking Behavior": "Порушення правил",
+        "Aggressive Behavior": "Агресивна поведінка",
+        "Other Problems": "Інші проблеми"
+    };
+
+    window.onload = function() {
+        // Check if config loaded
+        if (typeof CONFIG === 'undefined') {
+            alert("Помилка: файл config.js не знайдено!");
+        }
+
+        const raw = localStorage.getItem('cbcl_result');
+        if(!raw) {
+            document.querySelector('.container').innerHTML = "<h2 style='text-align:center'>Даних не знайдено</h2><a href='index.html' class='btn btn-primary' style='display:block;margin:20px auto;width:200px;text-align:center;'>Назад</a>";
+            return;
+        }
+
+        let data;
+        try { data = JSON.parse(raw); } 
+        catch(e) { alert("Дані пошкоджено"); return; }
+
+        // 1. CALCULATE AGE & GENDER
+        const dob = (data.meta && data.meta.dob) ? new Date(data.meta.dob) : new Date();
+        const fillDate = (data.meta && data.meta.date) ? new Date(data.meta.date) : new Date();
+        
+        let age = fillDate.getFullYear() - dob.getFullYear();
+        if (fillDate.getMonth() < dob.getMonth() || (fillDate.getMonth() === dob.getMonth() && fillDate.getDate() < dob.getDate())) {
+            age--;
+        }
+        // Fallback if age calculation fails (e.g. invalid dates)
+        if (isNaN(age)) age = 10;
+
+        let genderKey = "Boys";
+        const gRaw = (data.meta && data.meta.gender) ? data.meta.gender.toLowerCase() : "";
+        if(gRaw.includes("female") || gRaw.includes("дівчина") || gRaw.includes("girl")) genderKey = "Girls";
+
+        let ageKey = "6-11";
+        if(age >= 12) ageKey = "12-18";
+
+        const dobStr = (data.meta && data.meta.dob) ? data.meta.dob : "Не вказано";
+        document.getElementById('child-header').innerHTML = `
+            <strong>Дитина:</strong> ${data.child} | 
+            <strong>ID:</strong> ${data.id} | 
+            <strong>Вік:</strong> ${age} (${genderKey === 'Boys' ? 'Хлопець' : 'Дівчина'})
+        `;
+
+        // 2. RENDER SYNDROMES
+        renderBroadScales(data.scores, genderKey, ageKey);
+        renderSyndromes(data.scores, genderKey, ageKey);
+
+        // 3. RENDER COMPETENCE
+        let details = data.fullData;
+        if (typeof details === 'string') {
+            try { details = JSON.parse(details); } catch(e) { console.error("JSON Error", e); }
+        }
+        if(details) renderCompetence(details);
+    };
+
+    function renderSyndromes(scores, gender, ageGroup) {
+        if(!scores) return;
+        const container = document.getElementById('syndrome-container');
+        container.innerHTML = ""; 
+
+        // Get cutoffs safely
+        const norms = (typeof CONFIG !== 'undefined' && CONFIG.cutoffs) 
+            ? CONFIG.cutoffs[gender][ageGroup] 
+            : null;
+
+        // Define keys to EXCLUDE from this specific section
+        const excludedKeys = ["Internalizing", "Externalizing", "Total Problems"];
+
+        Object.entries(scores).forEach(([scale, val]) => {
+            // FILTER: Skip if this scale is one of the broad scales
+            if (excludedKeys.includes(scale)) return; 
+
+            const numVal = parseInt(val) || 0;
+            const displayName = SCALE_NAMES[scale] || scale;
+            
+            // Visualization Logic
+            let color = "#10b981"; // Green
+            let status = "Норма";
+            let widthPct = 0;
+            
+            // We want the Clinical Cutoff to always be at 75% of the bar width
+            const VISUAL_MAX_PERCENT = 75; 
+            
+            let markersHtml = '';
+
+            if(norms && norms[scale]) {
+                const [borderline, clinical] = norms[scale];
+                
+                // Calculate Scale Factor
+                const scaleFactor = VISUAL_MAX_PERCENT / clinical;
+                widthPct = numVal * scaleFactor;
+                
+                const borderPos = borderline * scaleFactor;
+                const clinicalPos = VISUAL_MAX_PERCENT;
+
+                // Color Logic
+                if (numVal >= clinical) {
+                    color = "#ef4444"; status = "Клінічний";
+                } else if (numVal >= borderline) {
+                    color = "#f59e0b"; status = "Межовий";
+                }
+
+                // Markers
+                markersHtml = `
+                    <div class="marker" style="left:${borderPos}%" title="Borderline: ${borderline}"></div>
+                    <div class="marker" style="left:${clinicalPos}%" title="Clinical: ${clinical}"></div>
+                `;
+            } else {
+                 // Fallback for "Other Problems" (no norms)
+                 // Scale it roughly so 15 points fills the bar
+                 widthPct = Math.min((numVal / 15) * 100, 100);
+                 if(scale === "Other Problems") { status = ""; color = "#64748b"; }
+            }
+
+            if(widthPct > 100) widthPct = 100;
+
+            const html = `
+                <div class="chart-row">
+                    <div class="label-group">
+                        <div class="label-text">${displayName}</div>
+                        <div class="label-status" style="color:${color}">${status}</div>
+                    </div>
+                    <div class="bar-container">
+                        ${markersHtml}
+                        <div class="bar" style="width: ${widthPct}%; background: ${color};"></div>
+                    </div>
+                    <div class="score-val">${numVal}</div>
+                </div>`;
+            container.innerHTML += html;
+        });
+    }
+
+    function renderCompetence(d) {
+        const actTbody = document.querySelector('#tbl-activities tbody');
+        actTbody.innerHTML = ""; 
+        
+        // Helper to render section
+        const renderRow = (label, list, detailsFn) => {
+            if(list && list.length > 0) {
+                const txt = list.map(detailsFn).join('');
+                actTbody.innerHTML += `<tr><th>${label}</th><td>${txt}</td></tr>`;
+            } else {
+                actTbody.innerHTML += `<tr><th>${label}</th><td><span style="color:#94a3b8">Не зазначено</span></td></tr>`;
+            }
+        };
+
+        renderRow("Спорт", d.activities.sports, s => `<div><strong>${s.name}</strong> <span style="color:#64748b; font-size:12px;">(Час: ${s.time}, Успіх: ${s.skill})</span></div>`);
+        renderRow("Хобі", d.activities.hobbies, s => `<div><strong>${s.name}</strong> <span style="color:#64748b; font-size:12px;">(Час: ${s.time}, Успіх: ${s.skill})</span></div>`);
+        renderRow("Організації", d.activities.orgs, o => `${o.name} (${o.activity || o.perf}), `);
+        renderRow("Обов'язки", d.activities.chores, c => `${c.name} (${c.quality || c.perf}), `);
+
+        // Social
+        document.getElementById('soc-friends').innerText = d.social.friends || "-";
+        document.getElementById('soc-freq').innerText = d.social.freq || "-";
+        if(d.social.relations) {
+            const labels = ["Брати/Сестри", "Ровесники", "Батьки", "На самоті"];
+            document.getElementById('soc-relations').innerHTML = d.social.relations.map((val, i) => {
+                let txt = (typeof val === 'object') ? val.val : val;
+                if(txt === "-") txt = "N/A";
+                return `<div style="margin-bottom:4px;"><span class="tag">${labels[i]}</span> ${txt}</div>`;
+            }).join('');
+        }
+
+        // School
+        const schTbody = document.querySelector('#tbl-school tbody');
+        schTbody.innerHTML = "";
+        
+        // Support both data structures (old/new)
+        let subjects = d.school.subjects || [];
+        if(!subjects.length && d.school.grades) {
+             d.school.grades.forEach((g, i) => subjects.push({name: LABELS.subjects[i] || "Subj", grade: LABELS.grades[g]}));
+        }
+
+        subjects.forEach(s => {
+            schTbody.innerHTML += `<tr><th>${s.name}</th><td>${s.grade}</td></tr>`;
+        });
+
+        // Flags
+        let problems = [];
+        if(d.school.info) {
+             if(d.school.info.repeat && d.school.info.repeat !== "Ні") problems.push(`2-й рік: ${d.school.info.repeat}`);
+             if(d.school.info.problems && d.school.info.problems !== "Ні") problems.push(`Проблеми: ${d.school.info.problems}`);
+        }
+        if(problems.length > 0) {
+            document.getElementById('school-notes').innerText = "⚠️ Повідомлено про проблеми: " + problems.join(" | ");
+        }
+    }
+    function renderBroadScales(scores, gender, ageGroup) {
+        if(!scores) return;
+        const container = document.getElementById('broad-container');
+        container.innerHTML = "";
+        
+        // Get norms from config
+        const norms = (typeof CONFIG !== 'undefined' && CONFIG.broadCutoffs) 
+            ? CONFIG.broadCutoffs[gender][ageGroup] 
+            : null;
+
+        // The 3 Summary Scales
+        const keys = ["Internalizing", "Externalizing", "Total Problems"];
+        const VISUAL_MAX_PERCENT = 75; // Clinical cutoff always sits at 75% width
+
+        keys.forEach(key => {
+            const val = scores[key] || 0;
+            const displayName = SCALE_NAMES[key] || key;
+            
+            let color = "#7c3aed"; // Purple default
+            let status = "Норма";
+            let widthPct = 0;
+            let markersHtml = "";
+
+            if (norms && norms[key]) {
+                const [borderline, clinical] = norms[key];
+                
+                // Scale bar so Clinical Threshold is at 75%
+                const scaleFactor = VISUAL_MAX_PERCENT / clinical;
+                widthPct = val * scaleFactor;
+                
+                // Color Logic
+                if (val >= clinical) {
+                    color = "#ef4444"; // Red
+                    status = "Клінічний";
+                } else if (val >= borderline) {
+                    color = "#f59e0b"; // Orange
+                    status = "Межовий";
+                } else {
+                    color = "#10b981"; // Green
+                }
+
+                // Dotted Lines
+                const borderPos = borderline * scaleFactor;
+                const clinicalPos = VISUAL_MAX_PERCENT;
+                markersHtml = `
+                    <div class="marker" style="left:${borderPos}%" title="Borderline: ${borderline}"></div>
+                    <div class="marker" style="left:${clinicalPos}%" title="Clinical: ${clinical}"></div>
+                `;
+            } else {
+                // Fallback (if gender/age missing)
+                widthPct = Math.min((val / (key==="Total Problems"?120:50)) * 100, 100);
+            }
+
+            if(widthPct > 100) widthPct = 100;
+
+            const html = `
+                <div class="chart-row broad-scale-row">
+                    <div class="label-group">
+                        <div class="label-text">${displayName}</div>
+                        <div class="label-status" style="color:${color}">${status}</div>
+                    </div>
+                    <div class="bar-container">
+                        ${markersHtml}
+                        <div class="bar" style="width: ${widthPct}%; background: ${color};"></div>
+                    </div>
+                    <div class="score-val">${val}</div>
+                </div>`;
+            container.innerHTML += html;
+        });
+    }
+
+    function renderBroadScales(scores, gender, ageGroup) {
+        if(!scores) return;
+        const container = document.getElementById('broad-container');
+        container.innerHTML = "";
+        
+        // Get norms from config
+        const norms = (typeof CONFIG !== 'undefined' && CONFIG.broadCutoffs) 
+            ? CONFIG.broadCutoffs[gender][ageGroup] 
+            : null;
+
+        // The 3 Summary Scales
+        const keys = ["Internalizing", "Externalizing", "Total Problems"];
+        const VISUAL_MAX_PERCENT = 75; // Clinical cutoff always sits at 75% width
+
+        keys.forEach(key => {
+            const val = scores[key] || 0;
+            const displayName = SCALE_NAMES[key] || key;
+            
+            let color = "#7c3aed"; // Purple default
+            let status = "Норма";
+            let widthPct = 0;
+            let markersHtml = "";
+
+            if (norms && norms[key]) {
+                const [borderline, clinical] = norms[key];
+                
+                // Scale bar so Clinical Threshold is at 75%
+                const scaleFactor = VISUAL_MAX_PERCENT / clinical;
+                widthPct = val * scaleFactor;
+                
+                // Color Logic
+                if (val >= clinical) {
+                    color = "#ef4444"; // Red
+                    status = "Клінічний";
+                } else if (val >= borderline) {
+                    color = "#f59e0b"; // Orange
+                    status = "Межовий";
+                } else {
+                    color = "#10b981"; // Green
+                }
+
+                // Dotted Lines
+                const borderPos = borderline * scaleFactor;
+                const clinicalPos = VISUAL_MAX_PERCENT;
+                markersHtml = `
+                    <div class="marker" style="left:${borderPos}%" title="Borderline: ${borderline}"></div>
+                    <div class="marker" style="left:${clinicalPos}%" title="Clinical: ${clinical}"></div>
+                `;
+            } else {
+                // Fallback (if gender/age missing)
+                widthPct = Math.min((val / (key==="Total Problems"?120:50)) * 100, 100);
+            }
+
+            if(widthPct > 100) widthPct = 100;
+
+            const html = `
+                <div class="chart-row broad-scale-row">
+                    <div class="label-group">
+                        <div class="label-text">${displayName}</div>
+                        <div class="label-status" style="color:${color}">${status}</div>
+                    </div>
+                    <div class="bar-container">
+                        ${markersHtml}
+                        <div class="bar" style="width: ${widthPct}%; background: ${color};"></div>
+                    </div>
+                    <div class="score-val">${val}</div>
+                </div>`;
+            container.innerHTML += html;
+        });
+    }
+</script>
+
+</body>
+</html>

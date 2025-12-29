@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пошук пацієнта</title>
+    <script src="config.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f1f5f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        h1 { color: #2563eb; margin-bottom: 20px; font-size: 24px; }
+        input { width: 100%; padding: 12px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 16px; margin-bottom: 15px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:hover { background: #1d4ed8; }
+        button:disabled { background: #94a3b8; cursor: not-allowed; }
+        .error { color: #dc2626; margin-top: 15px; font-size: 14px; background: #fef2f2; padding: 10px; border-radius: 6px; display: none; }
+        .back-link { display: block; margin-top: 20px; color: #64748b; text-decoration: none; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>Пошук звіту</h1>
+    <p style="color:#64748b; margin-bottom:20px;">Введіть ID або використайте посилання з таблиці.</p>
+    
+    <input type="text" id="searchId" placeholder="Введіть ID..." />
+    <button onclick="findPatient()" id="btnSearch">Знайти звіт</button>
+    <div class="error" id="errorMsg"></div>
+
+    <a href="index.html" class="back-link">← Назад до форми</a>
+</div>
+
+<script>
+    // AUTO-RUN: Check if ID is in the URL (e.g. lookup.html?id=123)
+    window.onload = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const id = urlParams.get('id');
+        if (id) {
+            document.getElementById('searchId').value = id;
+            findPatient(); // Auto-click
+        }
+    };
+
+    function findPatient() {
+        const idInput = document.getElementById('searchId');
+        const id = idInput.value.trim();
+        const btn = document.getElementById('btnSearch');
+        const err = document.getElementById('errorMsg');
+
+        if(!id) { alert("Please enter an ID"); return; }
+
+        btn.disabled = true;
+        btn.innerText = "Пошук...";
+        err.style.display = 'none';
+
+        // Fetch data from Google Script
+        const scriptUrl = CONFIG.GOOGLE_SCRIPT_URL;
+        const targetUrl = `${scriptUrl}?id=${encodeURIComponent(id)}`;
+
+        console.log("Fetching:", targetUrl);
+
+        fetch(targetUrl)
+        .then(response => response.json())
+        .then(data => {
+            if(data.error) throw new Error(data.error);
+            
+            // Save to localStorage
+            localStorage.setItem('cbcl_result', JSON.stringify(data));
+            
+            // Redirect to Result Page
+            window.location.href = 'result.html';
+        })
+        .catch(e => {
+            console.error(e);
+            btn.disabled = false;
+            btn.innerText = "Знайти звіт";
+            err.innerHTML = `<strong>Помилка:</strong> ${e.message}<br>Перевірте ID або з'єднання.`;
+            err.style.display = 'block';
+        });
+    }
+</script>
+
+</body>
+</html>
